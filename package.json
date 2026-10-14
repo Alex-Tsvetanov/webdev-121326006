@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node mcp-server/check.mjs -- npm run --silent mcp",
     "mcp": "node mcp-server/server.js"
   },
   "keywords": [],
