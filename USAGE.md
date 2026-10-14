@@ -4,3 +4,6 @@ One row per agent session. In Gemini CLI, type `/stats` before you quit and copy
 
 | Date | Tool | Input tokens | Output tokens | Credits (if no tokens) | List-price cost |
 |---|---|---|---|---|---|
+| 2026-10-14 | Gemini CLI | 27 728 | 87 | | $0.02 |
+
+Price list: Google Gemini API pricing, paid tier, standard rates per 1M tokens, as read on 2026-10-14 (https://ai.google.dev/gemini-api/docs/pricing). The session used `gemini-3.8-flash` ($0.75 input, $3.75 output: 25 856 in, 49 out, $0.0196) and `gemini-3.5-flash-lite` ($0.30 input, $2.50 output: 1 872 in, 38 out, $0.0007). Total $0.0202, shown as $0.02. The token counts are the sum of both models from `/stats`. The free tier charged nothing.
