@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab Reservations</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <h1>Lab Reservations</h1>
+    <button id="logout" class="button ghost" type="button" hidden>Sign out</button>
+  </header>
+
+  <main id="main">
+    <p id="status" class="notice" role="status" hidden></p>
+    <p id="error" class="notice error" role="alert" hidden></p>
+
+    <section id="auth" aria-labelledby="auth-title" hidden>
+      <div class="card">
+        <h2 id="auth-title">Sign in</h2>
+        <form id="auth-form" class="stack">
+          <label>Email
+            <input name="email" type="email" autocomplete="email" required>
+          </label>
+          <label>Password
+            <input name="password" type="password" autocomplete="current-password" minlength="8" required>
+          </label>
+          <div class="actions">
+            <button type="submit" class="button" id="sign-in">Sign in</button>
+            <button type="button" class="button ghost" id="register">Create account</button>
+          </div>
+        </form>
+        <a class="button ghost google" href="/auth/google">Continue with Google</a>
+      </div>
+    </section>
+
+    <section id="app" aria-label="Reservations" hidden>
+      <div class="grid">
+        <section class="card stack" aria-labelledby="book-title">
+          <h2 id="book-title">Book a lab</h2>
+
+          <form id="ai-form" class="stack">
+            <label>Describe what you need
+              <textarea name="text" rows="2" maxlength="500" placeholder="Biology lab for 2 hours on Monday afternoon with a microscope"></textarea>
+            </label>
+            <button class="button ghost" type="submit">Suggest with AI</button>
+          </form>
+          <div id="suggestion" class="notice" aria-live="polite" hidden></div>
+
+          <form id="booking-form" class="stack">
+            <label>Lab
+              <select name="labId" required></select>
+            </label>
+            <label>Start
+              <input name="startsAt" type="datetime-local" required>
+            </label>
+            <label>End
+              <input name="endsAt" type="datetime-local" required>
+            </label>
+            <label>Purpose
+              <input name="purpose" maxlength="200">
+            </label>
+            <button class="button" type="submit">Reserve</button>
+          </form>
+        </section>
+
+        <section class="card" aria-labelledby="labs-title">
+          <h2 id="labs-title">Labs</h2>
+          <div id="labs"></div>
+        </section>
+
+        <section class="card" aria-labelledby="mine-title">
+          <h2 id="mine-title">My reservations</h2>
+          <div id="mine"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
