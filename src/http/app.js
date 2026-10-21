@@ -33,6 +33,12 @@ function idParam(req) {
 export function createApp({ auth, reservations, ai, google, health, config, staticDir }) {
   const app = express();
   app.set('trust proxy', 1);
+  app.disable('x-powered-by');
+  // No framing (clickjacking), no MIME sniffing, and no referrer sent to other sites.
+  app.use((req, res, next) => {
+    res.set({ 'X-Frame-Options': 'DENY', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin' });
+    next();
+  });
   app.use(express.json({ limit: '16kb' }));
 
   const secure = config.publicBaseUrl.startsWith('https://');
