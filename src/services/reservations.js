@@ -15,7 +15,8 @@ function asConflict(err) {
 
 // Every rule about who may book or change a reservation lives here, so the HTTP routes and MCP tools cannot bypass it.
 export function createReservationService({ repo, now = () => new Date() }) {
-  function parseRange(startsAt, endsAt) {
+  // A start that is already in the past is refused only when it is new. An owner may still extend a booking that has begun.
+  function parseRange(startsAt, endsAt, { startIsNew = true } = {}) {
     const start = new Date(startsAt);
     const end = new Date(endsAt);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
@@ -23,7 +24,7 @@ export function createReservationService({ repo, now = () => new Date() }) {
     }
     if (end <= start) throw new AppError(400, 'The end time must be after the start time.');
     if (end - start > MAX_DURATION_MS) throw new AppError(400, 'A reservation can last at most 8 hours.');
-    if (start < now()) throw new AppError(400, 'You cannot reserve a lab in the past.');
+    if (startIsNew && start < now()) throw new AppError(400, 'You cannot reserve a lab in the past.');
     return { start, end };
   }
 
@@ -67,7 +68,7 @@ export function createReservationService({ repo, now = () => new Date() }) {
       let start = reservation.starts_at;
       let end = reservation.ends_at;
       if (changes.startsAt !== undefined || changes.endsAt !== undefined) {
-        ({ start, end } = parseRange(changes.startsAt ?? start, changes.endsAt ?? end));
+        ({ start, end } = parseRange(changes.startsAt ?? start, changes.endsAt ?? end, { startIsNew: changes.startsAt !== undefined }));
         await assertFree(reservation.lab_id, start, end, reservation.id);
       }
       return repo
