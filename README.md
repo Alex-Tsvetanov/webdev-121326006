@@ -69,3 +69,17 @@ When an exercise is done, commit and push, so your work is on GitHub and CI has 
 ## Save your free quota
 
 Stop the codespace when you finish (**Code → Codespaces → … → Stop codespace**) and delete codespaces you no longer need.
+
+## The project: lab reservations
+
+The project lives in the same repository as Exercise 1. Its spec is in [SPEC.md](SPEC.md) and the rules for agents are in [AGENTS.md](AGENTS.md).
+
+```bash
+npm install
+npm run migrate      # needs DATABASE_URL (see .env.example)
+npm start            # the web app on PORT (default 3000)
+npm test             # unit tests, then the Exercise 1 MCP check
+npm run coverage     # the coverage gate
+```
+
+The MCP server (`npm run mcp`) needs `MCP_TOKEN`: a session token from `POST /api/auth/token` with the email and password of the user it should act as.
