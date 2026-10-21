@@ -1,13 +1,20 @@
 // Lab 1: a minimal MCP server over stdio, no SDK.
 // Reads one JSON-RPC message per line from stdin and writes one reply per line to stdout.
 // Logs go to stderr only: stdout is the protocol, so one stray print there breaks the host.
-const readline = require('node:readline');
-const fs = require('node:fs');
-const path = require('node:path');
+//
+// Exercise 3 on: the project tools below call the same service functions as the HTTP routes,
+// and they act as the user whose session token is in MCP_TOKEN.
+import readline from 'node:readline';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { TOOL_SPECS, createTools, requireMcpUser } from '../src/mcp/tools.js';
+import { createServices } from '../src/container.js';
+import { AppError } from '../src/errors.js';
 
 const PROTOCOL_VERSION = '2025-11-25';
 const SERVER_INFO = { name: 'lectures', version: '0.1.0' };
-const HERE = __dirname;
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 // A protocol error is a broken message (unknown tool, bad arguments, unknown method).
 // It is answered with an error object, never with a result.
@@ -18,7 +25,8 @@ class ProtocolError extends Error {
   }
 }
 
-const TOOLS = [
+// Exercise 1 tools.
+const LECTURE_TOOLS = [
   {
     name: 'find_lecture',
     description:
@@ -63,10 +71,39 @@ function listFiles() {
   return { content: [{ type: 'text', text: names.join('\n') }], isError: false };
 }
 
-const TOOL_HANDLERS = { find_lecture: findLecture, list_files: listFiles };
+const LECTURE_HANDLERS = { find_lecture: findLecture, list_files: listFiles };
+
+// Exercise 3 tools. The services are built on first use, so the Exercise 1 check runs without a database.
+let services = null;
+
+const textResult = (text, isError = false) => ({ content: [{ type: 'text', text }], isError });
+
+async function callProjectTool(name, args) {
+  const spec = TOOL_SPECS.find((t) => t.name === name);
+  const parsed = spec.schema.safeParse(args);
+  if (!parsed.success) {
+    throw new ProtocolError(-32602, `Invalid arguments for ${name}: ${parsed.error.issues[0].message}`);
+  }
+  try {
+    services ??= createServices();
+    const user = await requireMcpUser(services.auth, process.env.MCP_TOKEN);
+    const tool = createTools(services).find((t) => t.name === name);
+    return textResult(JSON.stringify(await tool.run(user, parsed.data), null, 2));
+  } catch (err) {
+    // A rule refused the action, or no valid token: a readable result the model can act on.
+    if (err instanceof AppError) return textResult(err.message, true);
+    throw err;
+  }
+}
+
+// Only name, description and inputSchema go to the client; the run functions stay on the server.
+const TOOLS = [
+  ...LECTURE_TOOLS,
+  ...TOOL_SPECS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })),
+];
 
 // Returns the value of the result field for a request. Throws ProtocolError for broken requests.
-function handle(method, params) {
+async function handle(method, params) {
   switch (method) {
     case 'initialize':
       return {
@@ -79,7 +116,8 @@ function handle(method, params) {
     case 'tools/call': {
       const tool = TOOLS.find((t) => t.name === params.name);
       if (!tool) throw new ProtocolError(-32602, `Unknown tool: ${params.name}`);
-      return TOOL_HANDLERS[tool.name](params.arguments ?? {});
+      if (LECTURE_HANDLERS[tool.name]) return LECTURE_HANDLERS[tool.name](params.arguments ?? {});
+      return callProjectTool(tool.name, params.arguments ?? {});
     }
     default:
       throw new ProtocolError(-32601, `Unknown method: ${method}`);
@@ -90,7 +128,7 @@ function send(message) {
   process.stdout.write(JSON.stringify(message) + '\n');
 }
 
-function onLine(line) {
+async function onLine(line) {
   if (line.trim() === '') return;
   console.error('got: ' + line);
 
@@ -106,7 +144,7 @@ function onLine(line) {
   if (msg.id === undefined) return;
 
   try {
-    const result = handle(msg.method, msg.params ?? {});
+    const result = await handle(msg.method, msg.params ?? {});
     send({ jsonrpc: '2.0', id: msg.id, result });
   } catch (err) {
     const code = err instanceof ProtocolError ? err.code : -32603;
@@ -114,4 +152,6 @@ function onLine(line) {
   }
 }
 
-readline.createInterface({ input: process.stdin }).on('line', onLine);
+readline.createInterface({ input: process.stdin }).on('line', (line) => {
+  onLine(line);
+});
