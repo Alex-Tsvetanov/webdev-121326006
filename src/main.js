@@ -1,9 +1,14 @@
 import { fileURLToPath } from 'node:url';
-import { loadConfig } from './config.js';
+import { loadConfig, missingSettings } from './config.js';
 import { createServices } from './container.js';
 import { createApp } from './http/app.js';
 
 const config = loadConfig();
+const missing = missingSettings(config);
+if (missing.length) {
+  console.error(`Cannot start: set ${missing.join(' and ')} in the environment. See .env.example.`);
+  process.exit(1);
+}
 const services = createServices(config);
 
 const app = createApp({

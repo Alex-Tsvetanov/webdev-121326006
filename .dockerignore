@@ -1,0 +1,13 @@
+# Keep secrets, tests, logs and local state out of the image.
+.env
+.env.*
+!.env.example
+.git
+.github
+node_modules
+coverage
+checks
+mcp-server
+tests
+docs
+*.log

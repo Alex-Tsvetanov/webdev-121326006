@@ -43,6 +43,9 @@ export function createMemoryRepo() {
       const i = sessions.findIndex((s) => s.token_hash === tokenHash);
       if (i >= 0) sessions.splice(i, 1);
     },
+    async ping() {
+      return [{ '?column?': 1 }];
+    },
     async listLabs() {
       return labs.map((l) => ({ ...l, equipment: [...l.equipment] }));
     },

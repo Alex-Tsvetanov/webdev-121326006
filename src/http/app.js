@@ -24,7 +24,7 @@ function idParam(req) {
   return id;
 }
 
-export function createApp({ auth, reservations, ai, google, config, staticDir }) {
+export function createApp({ auth, reservations, ai, google, health, config, staticDir }) {
   const app = express();
   app.set('trust proxy', 1);
   app.use(express.json({ limit: '16kb' }));
@@ -115,11 +115,22 @@ export function createApp({ auth, reservations, ai, google, config, staticDir })
     res.json(await ai.suggestReservation(req.body?.text));
   });
 
+  // For the platform's health probe: 200 while the database answers, 503 when it does not.
+  app.get('/health', async (req, res) => {
+    const { ok } = await health.check();
+    if (ok) return res.json({ status: 'ok' });
+    res.status(503).json({ status: 'unavailable', error: 'The database is not answering. Try again shortly.' });
+  });
+
   app.use('/api', (req, res) => {
     res.status(404).json({ error: 'Not found.' });
   });
 
   app.use(express.static(staticDir));
+
+  app.use((req, res) => {
+    res.status(404).type('text/plain').send('Not found.');
+  });
 
   // Every error reaches the user as a sentence in { error }.
   app.use((err, req, res, _next) => {

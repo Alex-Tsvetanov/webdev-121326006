@@ -14,3 +14,13 @@ export function loadConfig(env = process.env) {
     sessionDays: 14,
   };
 }
+
+// The settings the app cannot run without. The web entry point refuses to start when one is missing.
+export function missingSettings(config) {
+  return [
+    ['DATABASE_URL', config.databaseUrl],
+    ['SESSION_SECRET', config.sessionSecret],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+}

@@ -2,7 +2,11 @@ import pg from 'pg';
 
 // All SQL lives here. Services receive this object and never see SQL.
 export function createPool(url, { ssl = false } = {}) {
-  return new pg.Pool({ connectionString: url, ssl: ssl ? { rejectUnauthorized: true } : undefined });
+  const pool = new pg.Pool({ connectionString: url, ssl: ssl ? { rejectUnauthorized: true } : undefined });
+  // An idle connection that the server drops (a restart, a sleeping free database) emits 'error'.
+  // Without a listener Node exits. Log it instead: the next request reconnects, and /health says 503 meanwhile.
+  pool.on('error', (err) => console.error('Database connection lost:', err.message));
+  return pool;
 }
 
 export function createPgRepo(pool) {
@@ -26,6 +30,8 @@ export function createPgRepo(pool) {
       q('insert into sessions (token_hash, user_id, expires_at) values ($1, $2, $3)', [tokenHash, userId, expiresAt]),
     findSession: (tokenHash) => one('select user_id, expires_at from sessions where token_hash = $1', [tokenHash]),
     deleteSession: (tokenHash) => q('delete from sessions where token_hash = $1', [tokenHash]),
+
+    ping: () => q('select 1', []),
 
     listLabs: () =>
       q(`select l.id, l.name, l.location, l.capacity,

@@ -100,6 +100,10 @@ Where this code does not match the layering: the MCP token check (`requireMcpUse
 - [AC-26] The MCP server with no `MCP_TOKEN`, or an expired one, returns an error result "MCP_TOKEN is missing or expired." and does not start acting as anyone.
 - [AC-27] The Google authorization URL contains the `state` and the exact `redirect_uri`; a failed token or userinfo call shows "Google sign-in failed. Please try again."
 - [AC-28] With no environment variables, the app uses port 3000, Gemini model `gemini-2.5-flash` and an 8-second AI timeout; with `SESSION_SECRET` empty, the services refuse to start.
+- [AC-29] The web app refuses to start when `DATABASE_URL` or `SESSION_SECRET` is missing, and names the missing settings in one sentence; with both set it starts.
+- [AC-30] `GET /health` answers 200 `{"status":"ok"}` while the database answers, and 503 with a sentence that names no host or error text when it does not.
+- [AC-31] An unknown page returns a one-line 404; malformed JSON returns 400 with a sentence; an unexpected failure returns 500 with a generic sentence and no stack trace or internal message.
+- [AC-32] A database connection that the server drops is logged in one line and does not stop the process; the next request can reconnect.
 
 ### Slice 1: sign-in and labs list
 Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the labs list, and signs out.
@@ -136,9 +140,15 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 | AC-26 | `tests/mcp.test.js` |
 | AC-27 | `tests/integrations.test.js`, `tests/rule-edges.test.js` |
 | AC-28 | `tests/integrations.test.js`, `tests/rule-edges.test.js` |
+| AC-29 | `tests/config.test.js` |
+| AC-30 | `tests/health.test.js` |
+| AC-31 | `tests/errors.test.js` |
+| AC-32 | `tests/pg-pool.test.js` |
 
 ## Spec vs result
 - The first version of the MCP server used an SDK. The course rule for Exercise 1 is a hand-written protocol loop, so the project tools were ported into `mcp-server/server.js`, which keeps its own loop; the SDK dependency was dropped. The tool logic stayed in `src/mcp/tools.js`.
 - The spec's AC-24 originally named `list_labs` and `list_my_reservations` as the two Exercise 1 tools. The Exercise 1 server actually has `find_lecture` and `list_files`, so AC-24 counts those and the six project tools.
 - The service-layer coverage gate (100%) first failed on branches of the auth and reservation rules; tests for those branches were added in `tests/rule-edges.test.js` instead of lowering the gate.
 - `SESSION_SECRET` is now required: it keys the session-token hash, so a leaked `sessions` table cannot be used as cookies.
+- Exercise 4, found by running the app against a real Postgres: stopping the database killed the whole process. The pool emitted an unhandled `error` event on a dropped connection. `createPool` now logs it (AC-32), so `/health` can answer 503 and recover to 200 when the database returns. Checked by hand: 200, then 503 with the process still running, then 200 after a restart of Postgres.
+- Exercise 4: `AI_TIMEOUT_MS` was read by the code but missing from `.env.example`; added.
