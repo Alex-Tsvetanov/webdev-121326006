@@ -6,7 +6,13 @@ import { AppError } from '../errors.js';
 function readCookie(req, name) {
   for (const part of (req.headers.cookie ?? '').split(';')) {
     const [key, ...rest] = part.trim().split('=');
-    if (key === name) return decodeURIComponent(rest.join('='));
+    if (key !== name) continue;
+    // A value with broken percent-encoding is not a session: treat it as no cookie instead of failing the request.
+    try {
+      return decodeURIComponent(rest.join('='));
+    } catch {
+      return null;
+    }
   }
   return null;
 }
