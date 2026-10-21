@@ -1,10 +1,16 @@
-import { AppError } from '../errors.js';
+import { AppError, OverlapError } from '../errors.js';
 
 const MAX_DURATION_MS = 8 * 60 * 60 * 1000;
 const MAX_PURPOSE_CHARS = 200;
 
 function cleanPurpose(purpose) {
   return String(purpose ?? '').trim().slice(0, MAX_PURPOSE_CHARS);
+}
+
+// The pre-check in assertFree cannot stop two requests that arrive together. The database refuses the second write instead.
+function asConflict(err) {
+  if (err instanceof OverlapError) return new AppError(409, 'This lab is already reserved for part of that time.');
+  return err;
 }
 
 // Every rule about who may book or change a reservation lives here, so the HTTP routes and MCP tools cannot bypass it.
@@ -43,13 +49,17 @@ export function createReservationService({ repo, now = () => new Date() }) {
       if (!lab) throw new AppError(404, 'Lab not found.');
       const { start, end } = parseRange(startsAt, endsAt);
       await assertFree(lab.id, start, end);
-      return repo.insertReservation({
-        labId: lab.id,
-        userId: user.id,
-        startsAt: start,
-        endsAt: end,
-        purpose: cleanPurpose(purpose),
-      });
+      return repo
+        .insertReservation({
+          labId: lab.id,
+          userId: user.id,
+          startsAt: start,
+          endsAt: end,
+          purpose: cleanPurpose(purpose),
+        })
+        .catch((err) => {
+          throw asConflict(err);
+        });
     },
 
     async update(user, id, changes) {
@@ -60,11 +70,15 @@ export function createReservationService({ repo, now = () => new Date() }) {
         ({ start, end } = parseRange(changes.startsAt ?? start, changes.endsAt ?? end));
         await assertFree(reservation.lab_id, start, end, reservation.id);
       }
-      return repo.updateReservation(reservation.id, {
-        startsAt: start,
-        endsAt: end,
-        purpose: changes.purpose === undefined ? reservation.purpose : cleanPurpose(changes.purpose),
-      });
+      return repo
+        .updateReservation(reservation.id, {
+          startsAt: start,
+          endsAt: end,
+          purpose: changes.purpose === undefined ? reservation.purpose : cleanPurpose(changes.purpose),
+        })
+        .catch((err) => {
+          throw asConflict(err);
+        });
     },
 
     async cancel(user, id) {

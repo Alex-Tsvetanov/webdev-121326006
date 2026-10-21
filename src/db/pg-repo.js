@@ -1,4 +1,12 @@
 import pg from 'pg';
+import { OverlapError } from '../errors.js';
+
+// 23P01 is PostgreSQL's exclusion_violation: the reservations_no_overlap constraint (migration 004) fired.
+const noOverlap = (promise) =>
+  promise.catch((err) => {
+    if (err.code === '23P01') throw new OverlapError();
+    throw err;
+  });
 
 // All SQL lives here. Services receive this object and never see SQL.
 export function createPool(url, { ssl = false } = {}) {
@@ -59,17 +67,21 @@ export function createPgRepo(pool) {
         [labId, startsAt, endsAt, excludeId ?? null],
       ),
     insertReservation: ({ labId, userId, startsAt, endsAt, purpose }) =>
-      one(
-        `insert into reservations (lab_id, user_id, starts_at, ends_at, purpose)
-         values ($1, $2, $3, $4, $5)
-         returning id, lab_id, user_id, starts_at, ends_at, purpose`,
-        [labId, userId, startsAt, endsAt, purpose],
+      noOverlap(
+        one(
+          `insert into reservations (lab_id, user_id, starts_at, ends_at, purpose)
+           values ($1, $2, $3, $4, $5)
+           returning id, lab_id, user_id, starts_at, ends_at, purpose`,
+          [labId, userId, startsAt, endsAt, purpose],
+        ),
       ),
     updateReservation: (id, { startsAt, endsAt, purpose }) =>
-      one(
-        `update reservations set starts_at = $2, ends_at = $3, purpose = $4 where id = $1
-         returning id, lab_id, user_id, starts_at, ends_at, purpose`,
-        [id, startsAt, endsAt, purpose],
+      noOverlap(
+        one(
+          `update reservations set starts_at = $2, ends_at = $3, purpose = $4 where id = $1
+           returning id, lab_id, user_id, starts_at, ends_at, purpose`,
+          [id, startsAt, endsAt, purpose],
+        ),
       ),
     deleteReservation: (id) => q('delete from reservations where id = $1', [id]),
   };

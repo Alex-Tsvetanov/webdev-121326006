@@ -1,3 +1,5 @@
+import { OverlapError } from '../../src/errors.js';
+
 // In-memory stand-in for src/db/pg-repo.js with the same method names and row shapes.
 export function createMemoryRepo() {
   let seq = 0;
@@ -65,13 +67,20 @@ export function createMemoryRepo() {
     async findOverlapping({ labId, startsAt, endsAt, excludeId }) {
       return reservations.find((r) => r.lab_id === labId && r.starts_at < endsAt && r.ends_at > startsAt && r.id !== excludeId) ?? null;
     },
+    // Like the database's exclusion constraint: the overlap check and the write happen in one synchronous step.
     async insertReservation({ labId, userId, startsAt, endsAt, purpose }) {
+      if (reservations.some((r) => r.lab_id === labId && r.starts_at < endsAt && r.ends_at > startsAt)) {
+        throw new OverlapError();
+      }
       const r = { id: ++seq, lab_id: labId, user_id: userId, starts_at: startsAt, ends_at: endsAt, purpose };
       reservations.push(r);
       return { ...r };
     },
     async updateReservation(id, { startsAt, endsAt, purpose }) {
       const r = reservations.find((x) => x.id === id);
+      if (reservations.some((o) => o.id !== id && o.lab_id === r.lab_id && o.starts_at < endsAt && o.ends_at > startsAt)) {
+        throw new OverlapError();
+      }
       Object.assign(r, { starts_at: startsAt, ends_at: endsAt, purpose });
       return { ...r };
     },
