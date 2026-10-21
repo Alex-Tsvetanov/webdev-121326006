@@ -140,6 +140,12 @@ async function onLine(line) {
     return;
   }
 
+  // A line that is valid JSON but not an object (null, a number, a string) is not a request.
+  if (typeof msg !== 'object' || msg === null) {
+    send({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid Request' } });
+    return;
+  }
+
   // A notification has no id and gets no reply, whatever its method.
   if (msg.id === undefined) return;
 
