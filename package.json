@@ -1,13 +1,33 @@
 {
-  "name": "lab1",
+  "name": "lab-reservations",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "type": "module",
+  "description": "Lab reservations: a web app and an MCP server over the same service layer.",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "src/main.js",
   "scripts": {
-    "test": "node mcp-server/check.mjs -- npm run --silent mcp",
-    "mcp": "node mcp-server/server.js"
+    "start": "node src/main.js",
+    "migrate": "node src/db/migrate.js",
+    "mcp": "node mcp-server/server.js",
+    "test:unit": "vitest run",
+    "coverage": "vitest run --coverage",
+    "test": "npm run test:unit && node mcp-server/check.mjs -- npm run --silent mcp"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^5.1.0",
+    "pg": "^8.13.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.0",
+    "supertest": "^7.0.0",
+    "vitest": "^2.1.0"
+  }
 }
