@@ -4,8 +4,7 @@
     "my-project": {
       "type": "stdio",
       "command": "node",
-      "args": ["mcp-server/server.js"],
-      "env": { "MCP_TOKEN": "${env:MCP_TOKEN}" }
+      "args": ["--env-file-if-exists=.env", "mcp-server/server.js"]
     }
   }
 }
