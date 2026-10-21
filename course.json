@@ -5,5 +5,8 @@
   "mcp": "npm run mcp",
 
   "//liveUrl": "Exercise 4. Where your deployed application answers, with no trailing slash.",
-  "liveUrl": ""
+  "liveUrl": "",
+
+  "//peerRepo": "Exercise 5. The repository you review. Set to your classmate's repository. Until one is assigned, this is your own repository as a stand-in. Change it when you have a peer; the review never pushes to it.",
+  "peerRepo": "https://github.com/Alex-Tsvetanov/webdev-121326006"
 }

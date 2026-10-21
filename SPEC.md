@@ -121,9 +121,9 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 | AC-7 | `tests/auth.test.js` |
 | AC-8 | `tests/auth.test.js` |
 | AC-9 | `tests/reservations.test.js`, `tests/rule-edges.test.js` |
-| AC-10 | `tests/reservations.test.js` |
+| AC-10 | `tests/reservations.test.js`, `tests/r1-concurrent-booking.test.js` |
 | AC-11 | `tests/reservations.test.js` |
-| AC-12 | `tests/reservations.test.js`, `tests/rule-edges.test.js` |
+| AC-12 | `tests/reservations.test.js`, `tests/rule-edges.test.js`, `tests/r1-concurrent-booking.test.js`, `tests/r2-extend-ongoing.test.js` |
 | AC-13 | `tests/reservations.test.js` |
 | AC-14 | `tests/reservations.test.js` |
 | AC-15 | `tests/ai.test.js`, `tests/rule-edges.test.js` |
@@ -131,18 +131,18 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 | AC-17 | `tests/ai.test.js` |
 | AC-18 | `tests/ai.test.js` |
 | AC-19 | `tests/ai.test.js`, `tests/rule-edges.test.js` |
-| AC-20 | `tests/http.test.js` |
+| AC-20 | `tests/http.test.js`, `tests/r4-malformed-cookie.test.js` |
 | AC-21 | `tests/http.test.js` |
 | AC-22 | `tests/http.test.js` |
 | AC-23 | `tests/http.test.js` |
-| AC-24 | `tests/mcp.test.js` |
+| AC-24 | `tests/mcp.test.js`, `tests/r3-mcp-null.test.js` |
 | AC-25 | `tests/mcp.test.js` |
 | AC-26 | `tests/mcp.test.js` |
 | AC-27 | `tests/integrations.test.js`, `tests/rule-edges.test.js` |
 | AC-28 | `tests/integrations.test.js`, `tests/rule-edges.test.js` |
 | AC-29 | `tests/config.test.js` |
 | AC-30 | `tests/health.test.js` |
-| AC-31 | `tests/errors.test.js` |
+| AC-31 | `tests/errors.test.js`, `tests/r8-headers.test.js` |
 | AC-32 | `tests/pg-pool.test.js` |
 
 ## Spec vs result
@@ -152,3 +152,5 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 - `SESSION_SECRET` is now required: it keys the session-token hash, so a leaked `sessions` table cannot be used as cookies.
 - Exercise 4, found by running the app against a real Postgres: stopping the database killed the whole process. The pool emitted an unhandled `error` event on a dropped connection. `createPool` now logs it (AC-32), so `/health` can answer 503 and recover to 200 when the database returns. Checked by hand: 200, then 503 with the process still running, then 200 after a restart of Postgres.
 - Exercise 4: `AI_TIMEOUT_MS` was read by the code but missing from `.env.example`; added.
+- Exercise 5, review of this project (`REVIEW.md`): a race let two users book the same slot. Reproduced on Postgres (6 of 10 slots double-booked). Fixed in migration 004 with a database constraint, not only a check in the service (R1). Also fixed: an ongoing booking could not be extended (R2), a `null` line crashed the MCP server (R3), a malformed cookie returned 500 (R4), and missing browser protections (R8).
+- Exercise 5, open: linking a Google sign-in to an existing password account does not require that the password account ever proved its email (R5, AC-4). Login and booking have no throttle or cap (R6). Both need a decision before they change; see `REVIEW.md`.
