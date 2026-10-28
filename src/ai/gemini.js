@@ -24,7 +24,11 @@ export function createGeminiClient({ apiKey, model, fetchImpl = fetch }) {
         throw new AiError(code);
       }
 
-      if (res.status === 429) throw new AiError('rate_limited');
+      // 503 means "high demand, try later": the same user message as a 429, not a configuration problem.
+      if (res.status === 429 || res.status === 503) {
+        console.error(`Gemini is busy: HTTP ${res.status}`);
+        throw new AiError('rate_limited');
+      }
       if (!res.ok) {
         const detail = await res.json().then((body) => body?.error?.message).catch(() => null);
         console.error(`Gemini answered HTTP ${res.status}${detail ? `: ${String(detail).slice(0, 200)}` : ''}`);

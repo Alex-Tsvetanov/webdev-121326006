@@ -33,6 +33,18 @@ describe('Gemini adapter failures', () => {
     log.mockRestore();
   });
 
+  it('AC-36: a 503 from the provider means busy, not refused, and says to try again', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const busy = createGeminiClient({
+      apiKey: KEY,
+      model: 'gemini-3.8-flash',
+      fetchImpl: reply(503, { error: { message: 'This model is currently experiencing high demand.' } }),
+    });
+    await expect(busy.generateJson('p', { timeoutMs: 1000 })).rejects.toMatchObject({ code: 'rate_limited' });
+    expect(log.mock.calls.flat().join(' ')).toMatch(/Gemini is busy: HTTP 503/);
+    log.mockRestore();
+  });
+
   it('AC-36: an answer with no text, or text that is not JSON, gets its own sentence and a log line without the text', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const noText = createGeminiClient({ apiKey: KEY, model: 'm', fetchImpl: reply(200, { candidates: [{ finishReason: 'SAFETY' }] }) });

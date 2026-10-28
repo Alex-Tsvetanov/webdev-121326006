@@ -55,7 +55,7 @@ describe('AI reservation suggestions', () => {
 
     const run = (fetchImpl) => createGeminiClient({ apiKey: 'k', model: 'm', fetchImpl }).generateJson('p', { timeoutMs: 100 });
     await expect(run(async () => new Response('', { status: 429 }))).rejects.toMatchObject({ code: 'rate_limited' });
-    await expect(run(async () => new Response('', { status: 503 }))).rejects.toMatchObject({ code: 'provider_error' });
+    await expect(run(async () => new Response('', { status: 503 }))).rejects.toMatchObject({ code: 'rate_limited' }); // 503 is 'busy', changed in 72f84cc
     await expect(run(async () => { throw Object.assign(new Error('t'), { name: 'TimeoutError' }); })).rejects.toMatchObject({ code: 'timeout' });
     await expect(run(async () => { throw new Error('offline'); })).rejects.toMatchObject({ code: 'network' });
     await expect(run(async () => Response.json({ candidates: [] }))).rejects.toMatchObject({ code: 'empty' });
