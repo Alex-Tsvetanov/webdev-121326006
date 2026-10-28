@@ -149,6 +149,8 @@ $('#logout').addEventListener('click', async () => {
   await api('/api/auth/logout', { method: 'POST' }).catch(() => {});
   showAuth();
   report('Signed out.');
+  // Focus would otherwise fall back to the top of the page; send it to the sign-in heading instead.
+  $('#auth-title').focus();
 });
 
 $('#booking-form').addEventListener('submit', async (event) => {
@@ -176,6 +178,7 @@ $('#booking-form').addEventListener('submit', async (event) => {
 $('#ai-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const box = $('#suggestion');
+  report('');
   box.className = 'notice';
   box.hidden = false;
   box.textContent = 'The assistant is thinking…';
