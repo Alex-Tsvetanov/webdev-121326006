@@ -84,7 +84,7 @@ export const TOOL_SPECS = [
       required: ['text'],
     },
     schema: z.object({ text: z.string().min(1).max(500) }),
-    run: (s, user, { text }) => s.ai.suggestReservation(text),
+    run: (s, user, { text }) => s.ai.suggestReservation(user, text),
   },
 ];
 

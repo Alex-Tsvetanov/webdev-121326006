@@ -104,6 +104,9 @@ Where this code does not match the layering: the MCP token check (`requireMcpUse
 - [AC-30] `GET /health` answers 200 `{"status":"ok"}` while the database answers, and 503 with a sentence that names no host or error text when it does not.
 - [AC-31] An unknown page returns a one-line 404; malformed JSON returns 400 with a sentence; an unexpected failure returns 500 with a generic sentence and no stack trace or internal message.
 - [AC-32] A database connection that the server drops is logged in one line and does not stop the process; the next request can reconnect.
+- [AC-33] A user who fails or repeats sign-in for one email gets 429 "Too many sign-in attempts for this email. Try again in 15 minutes." after 10 attempts in 15 minutes, even with the right password; another email is not affected.
+- [AC-34] A user's 21st assistant request in one hour gets 429 and no model call is made; another user keeps their own allowance.
+- [AC-35] A user who has 10 bookings that have not ended cannot book an eleventh (409 with a sentence); a finished booking does not count.
 
 ### Slice 1: sign-in and labs list
 Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the labs list, and signs out.
@@ -144,6 +147,9 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 | AC-30 | `tests/health.test.js` |
 | AC-31 | `tests/errors.test.js`, `tests/r8-headers.test.js` |
 | AC-32 | `tests/pg-pool.test.js` |
+| AC-33 | `tests/r6-limits.test.js` |
+| AC-34 | `tests/r6-limits.test.js` |
+| AC-35 | `tests/r6-limits.test.js` |
 
 ## Spec vs result
 - The first version of the MCP server used an SDK. The course rule for Exercise 1 is a hand-written protocol loop, so the project tools were ported into `mcp-server/server.js`, which keeps its own loop; the SDK dependency was dropped. The tool logic stayed in `src/mcp/tools.js`.
@@ -153,4 +159,5 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 - Exercise 4, found by running the app against a real Postgres: stopping the database killed the whole process. The pool emitted an unhandled `error` event on a dropped connection. `createPool` now logs it (AC-32), so `/health` can answer 503 and recover to 200 when the database returns. Checked by hand: 200, then 503 with the process still running, then 200 after a restart of Postgres.
 - Exercise 4: `AI_TIMEOUT_MS` was read by the code but missing from `.env.example`; added.
 - Exercise 5, review of this project (`REVIEW.md`): a race let two users book the same slot. Reproduced on Postgres (6 of 10 slots double-booked). Fixed in migration 004 with a database constraint, not only a check in the service (R1). Also fixed: an ongoing booking could not be extended (R2), a `null` line crashed the MCP server (R3), a malformed cookie returned 500 (R4), and missing browser protections (R8).
-- Exercise 5, open: linking a Google sign-in to an existing password account does not require that the password account ever proved its email (R5, AC-4). Login and booking have no throttle or cap (R6). Both need a decision before they change; see `REVIEW.md`.
+- Exercise 5, open: linking a Google sign-in to an existing password account does not require that the password account ever proved its email (R5, AC-4). It needs an email-verification step before it can be fixed without breaking AC-4; see `REVIEW.md`.
+- Exercise 5, R6: limits added (AC-33 to AC-35). The numbers are the ones chosen in this project: 10 sign-in attempts per email per 15 minutes, 20 assistant requests per user per hour, 10 upcoming bookings per user. The limits are held in memory, so they start again after a restart. They are not a replacement for a shared store if the app ever runs on several instances.

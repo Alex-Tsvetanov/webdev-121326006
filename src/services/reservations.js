@@ -2,6 +2,8 @@ import { AppError, OverlapError } from '../errors.js';
 
 const MAX_DURATION_MS = 8 * 60 * 60 * 1000;
 const MAX_PURPOSE_CHARS = 200;
+// A user may hold this many bookings that have not ended yet, so one account cannot block the labs for everyone.
+const MAX_UPCOMING = 10;
 
 function cleanPurpose(purpose) {
   return String(purpose ?? '').trim().slice(0, MAX_PURPOSE_CHARS);
@@ -49,6 +51,10 @@ export function createReservationService({ repo, now = () => new Date() }) {
       const lab = await repo.findLab(Number(labId));
       if (!lab) throw new AppError(404, 'Lab not found.');
       const { start, end } = parseRange(startsAt, endsAt);
+      const upcoming = (await repo.listReservationsForUser(user.id)).filter((r) => new Date(r.ends_at) > now());
+      if (upcoming.length >= MAX_UPCOMING) {
+        throw new AppError(409, `You already have ${MAX_UPCOMING} upcoming reservations. Cancel one before you book another.`);
+      }
       await assertFree(lab.id, start, end);
       return repo
         .insertReservation({

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AiError, AppError } from '../errors.js';
+import { createLimiter } from './limits.js';
 
 const MAX_REQUEST_CHARS = 500;
 
@@ -39,8 +40,16 @@ function buildPrompt(request, labs, current) {
 }
 
 export function createAiService({ client, repo, now = () => new Date(), timeoutMs = 8000 }) {
+  // Each user gets 20 assistant requests an hour, so one account cannot use up the provider's quota for everyone.
+  const perUser = createLimiter({
+    max: 20,
+    windowMs: 60 * 60 * 1000,
+    now,
+    message: 'You have used the assistant a lot this hour. Fill in the form instead, or try again later.',
+  });
   return {
-    async suggestReservation(text) {
+    async suggestReservation(user, text) {
+      perUser.take(user.id);
       const request = String(text ?? '').trim();
       if (!request) throw new AppError(400, 'Describe the lab you need in a few words.');
       if (request.length > MAX_REQUEST_CHARS) {

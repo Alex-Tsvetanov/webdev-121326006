@@ -124,7 +124,7 @@ export function createApp({ auth, reservations, ai, google, health, config, stat
 
   // AI
   app.post('/api/ai/suggest-reservation', requireUser, async (req, res) => {
-    res.json(await ai.suggestReservation(req.body?.text));
+    res.json(await ai.suggestReservation(req.user, req.body?.text));
   });
 
   // For the platform's health probe: 200 while the database answers, 503 when it does not.

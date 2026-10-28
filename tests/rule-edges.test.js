@@ -7,6 +7,8 @@ import { createGoogleClient } from '../src/auth/google.js';
 import { createServices } from '../src/container.js';
 import { createMemoryRepo } from './helpers/memory-repo.js';
 
+const USER = { id: 1 };
+
 describe('rule edge cases', () => {
   it('AC-1: a missing email or a non-text password is refused, and the auth service will not start without SESSION_SECRET', async () => {
     const repo = createMemoryRepo();
@@ -60,14 +62,14 @@ describe('rule edge cases', () => {
         return { labId: 1, startsAt: '2099-01-01T10:00:00Z', endsAt: '2099-01-01T11:00:00Z', purpose: 'quiet work' };
       },
     };
-    const res = await createAiService({ client, repo }).suggestReservation('quiet room');
+    const res = await createAiService({ client, repo }).suggestReservation(USER, 'quiet room');
     expect(prompt).toMatch(/equipment: none/);
     expect(res.status).toBe('ok');
   });
 
   it('AC-19: a missing request is refused before any model call', async () => {
     const ai = createAiService({ client: null, repo: createMemoryRepo() });
-    await expect(ai.suggestReservation(undefined)).rejects.toMatchObject({ status: 400 });
+    await expect(ai.suggestReservation(USER, undefined)).rejects.toMatchObject({ status: 400 });
   });
 
   it('AC-27: a failed userinfo call gives the readable Google error', async () => {

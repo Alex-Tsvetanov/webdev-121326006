@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { createHmac, randomBytes } from 'node:crypto';
 import { AppError } from '../errors.js';
+import { createLimiter } from './limits.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BCRYPT_ROUNDS = 12;
@@ -21,6 +22,14 @@ function publicUser(user) {
 
 export function createAuthService({ repo, now = () => new Date(), sessionDays = 14, sessionSecret }) {
   if (!sessionSecret) throw new Error('SESSION_SECRET must be set before the app can sign anyone in.');
+
+  // Ten sign-in attempts per email in 15 minutes: enough for a typo, too few to guess a password.
+  const loginAttempts = createLimiter({
+    max: 10,
+    windowMs: 15 * 60 * 1000,
+    now,
+    message: 'Too many sign-in attempts for this email. Try again in 15 minutes.',
+  });
 
   async function issueSession(userId) {
     const token = randomBytes(32).toString('base64url');
@@ -45,6 +54,7 @@ export function createAuthService({ repo, now = () => new Date(), sessionDays = 
     },
 
     async login({ email, password }) {
+      loginAttempts.take(normalizeEmail(email));
       const user = await repo.findUserByEmail(normalizeEmail(email));
       const ok = Boolean(user?.password_hash) && (await bcrypt.compare(String(password ?? ''), user.password_hash));
       // Same message for unknown email and wrong password, so the form cannot be used to find accounts.
