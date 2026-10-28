@@ -1,6 +1,7 @@
 import { AiError } from '../errors.js';
 
 // Thin adapter over Gemini's REST API. The key goes in a header, never in the URL.
+// Failures are logged with the provider's own reason, so the server log says why. The key and the user's text are never logged.
 export function createGeminiClient({ apiKey, model, fetchImpl = fetch }) {
   return {
     async generateJson(prompt, { timeoutMs }) {
@@ -18,18 +19,28 @@ export function createGeminiClient({ apiKey, model, fetchImpl = fetch }) {
           signal: AbortSignal.timeout(timeoutMs),
         });
       } catch (err) {
-        throw new AiError(err.name === 'TimeoutError' || err.name === 'AbortError' ? 'timeout' : 'network');
+        const code = err.name === 'TimeoutError' || err.name === 'AbortError' ? 'timeout' : 'network';
+        console.error(`Gemini request failed before an answer: ${err.name}: ${err.message}`);
+        throw new AiError(code);
       }
 
       if (res.status === 429) throw new AiError('rate_limited');
-      if (!res.ok) throw new AiError('provider_error');
+      if (!res.ok) {
+        const detail = await res.json().then((body) => body?.error?.message).catch(() => null);
+        console.error(`Gemini answered HTTP ${res.status}${detail ? `: ${String(detail).slice(0, 200)}` : ''}`);
+        throw new AiError('provider_error');
+      }
 
       const data = await res.json().catch(() => null);
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (typeof text !== 'string') throw new AiError('empty');
+      if (typeof text !== 'string') {
+        console.error(`Gemini answer had no text: finishReason=${data?.candidates?.[0]?.finishReason ?? 'none'}, blockReason=${data?.promptFeedback?.blockReason ?? 'none'}`);
+        throw new AiError('empty');
+      }
       try {
         return JSON.parse(text);
       } catch {
+        console.error(`Gemini answer was not JSON (${text.length} characters)`);
         throw new AiError('invalid_json');
       }
     },

@@ -16,6 +16,10 @@ const UNAVAILABLE_MESSAGES = {
   missing_key: 'The AI assistant is not set up right now. Please fill in the form instead.',
   rate_limited: 'The AI assistant is busy. Try again in a minute, or fill in the form.',
   timeout: 'The AI assistant took too long to answer. Try again, or fill in the form.',
+  provider_error: 'The AI assistant refused the request. The site owner needs to check its setup. Please fill in the form instead.',
+  network: 'The AI assistant could not be reached. Please fill in the form instead.',
+  empty: 'The AI assistant returned nothing usable. Please fill in the form instead.',
+  invalid_json: 'The AI assistant returned an answer we could not read. Please fill in the form instead.',
 };
 const DEFAULT_UNAVAILABLE = 'The AI assistant is unavailable right now. Please fill in the form instead.';
 

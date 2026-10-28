@@ -107,6 +107,7 @@ Where this code does not match the layering: the MCP token check (`requireMcpUse
 - [AC-33] A user who fails or repeats sign-in for one email gets 429 "Too many sign-in attempts for this email. Try again in 15 minutes." after 10 attempts in 15 minutes, even with the right password; another email is not affected.
 - [AC-34] A user's 21st assistant request in one hour gets 429 and no model call is made; another user keeps their own allowance.
 - [AC-35] A user who has 10 bookings that have not ended cannot book an eleventh (409 with a sentence); a finished booking does not count.
+- [AC-36] When the model provider refuses a request, the server log names the HTTP status and the provider's message, never the API key or the user's text, and the box shows a sentence that says which kind of failure it was (refused, no text, not JSON).
 
 ### Slice 1: sign-in and labs list
 Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the labs list, and signs out.
@@ -150,6 +151,7 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 | AC-33 | `tests/r6-limits.test.js` |
 | AC-34 | `tests/r6-limits.test.js` |
 | AC-35 | `tests/r6-limits.test.js` |
+| AC-36 | `tests/gemini.test.js` |
 
 ## Spec vs result
 - The first version of the MCP server used an SDK. The course rule for Exercise 1 is a hand-written protocol loop, so the project tools were ported into `mcp-server/server.js`, which keeps its own loop; the SDK dependency was dropped. The tool logic stayed in `src/mcp/tools.js`.
