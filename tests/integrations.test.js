@@ -33,7 +33,7 @@ describe('integrations and configuration', () => {
 
   it('AC-28: configuration has safe defaults and reads port and SSL settings from the environment', () => {
     const defaults = loadConfig({});
-    expect(defaults).toMatchObject({ port: 3000, pgSsl: false, aiTimeoutMs: 15000, modelName: 'gemini-2.5-flash' });
+    expect(defaults).toMatchObject({ port: 3000, pgSsl: false, aiTimeoutMs: 15000, modelName: 'gemini-3.6-flash' });
     expect(loadConfig({ PORT: '8080', PGSSL: 'true', AI_TIMEOUT_MS: '2000' })).toMatchObject({
       port: 8080,
       pgSsl: true,

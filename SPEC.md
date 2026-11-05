@@ -28,7 +28,7 @@ Lab booking (one of the three predefined topics; name registered in Моят к�
 
 ## The model feature
 <!-- Which model, which modality, and what it does for a user. -->
-- Model: Google Gemini `gemini-2.5-flash` (text in, JSON out), called over REST from `src/ai/gemini.js`; the model name is `MODEL_NAME`.
+- Model: Google Gemini `gemini-3.6-flash` (text in, JSON out), called over REST from `src/ai/gemini.js`; the model name is `MODEL_NAME`.
 - Input: the student's short request in plain words (up to 500 characters) plus the current time and the list of labs with their location, capacity, and equipment.
 - Output: one proposed booking: lab, start, end, and a short purpose. It is pre-filled into the booking form; nothing is saved until the user presses Reserve.
 - When it fails: a timeout after 15 seconds, a 429, a 5xx, or a missing key shows a sentence saying the assistant is busy or unavailable, and the manual form keeps working. A reply that does not match the schema, names an unknown lab, or has times in the past is rejected and never shown as a booking.
@@ -107,7 +107,7 @@ Where this code does not match the layering: the MCP token check (`requireMcpUse
 - [AC-25] Calling `create_reservation` through MCP books exactly what the HTTP route books, and `cancel_reservation` on another user's booking returns an error result with "You can only change your own reservations."
 - [AC-26] The MCP server with no `MCP_TOKEN`, or an expired one, returns an error result "MCP_TOKEN is missing or expired." and does not start acting as anyone.
 - [AC-27] The Google authorization URL contains the `state` and the exact `redirect_uri`; a failed token or userinfo call shows "Google sign-in failed. Please try again."
-- [AC-28] With no environment variables, the app uses port 3000, Gemini model `gemini-2.5-flash` and a 15-second AI timeout; with `SESSION_SECRET` empty, the services refuse to start.
+- [AC-28] With no environment variables, the app uses port 3000, Gemini model `gemini-3.6-flash` and a 15-second AI timeout; with `SESSION_SECRET` empty, the services refuse to start.
 - [AC-29] The web app refuses to start when `DATABASE_URL` or `SESSION_SECRET` is missing, and names the missing settings in one sentence; with both set it starts.
 - [AC-30] `GET /health` answers 200 `{"status":"ok"}` while the database answers, and 503 with a sentence that names no host or error text when it does not.
 - [AC-31] An unknown page returns a one-line 404; malformed JSON returns 400 with a sentence; an unexpected failure returns 500 with a generic sentence and no stack trace or internal message.

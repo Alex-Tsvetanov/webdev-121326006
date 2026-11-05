@@ -24,7 +24,7 @@ Every variable the code reads is listed in `.env.example`.
 | `PORT` | no | 3000 |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | no | Google sign-in answers 503 |
 | `GEMINI_API_KEY` | no | the AI box says the assistant is not set up; no request leaves the server |
-| `MODEL_NAME` | no | `gemini-2.5-flash` |
+| `MODEL_NAME` | no | `gemini-3.6-flash` |
 | `AI_TIMEOUT_MS` | no | 15000 |
 | `MCP_TOKEN` | MCP server only | the MCP server refuses to act |
 
@@ -87,7 +87,7 @@ So a signed-in visit makes three request rounds before the lists fill in. The ti
 ## Model feature
 
 - **What it does.** Turns a short request (up to 500 characters) into a suggested lab, start, end and purpose. Nothing is saved until the user presses "Use this suggestion" and then books.
-- **Provider.** Google Gemini, `gemini-2.5-flash`, through `src/ai/gemini.js`. The key is sent in the `x-goog-api-key` header, never in the URL.
+- **Provider.** Google Gemini, `gemini-3.6-flash`, through `src/ai/gemini.js`. The key is sent in the `x-goog-api-key` header, never in the URL.
 - **What data leaves the app.** The lab catalogue (names, locations, capacities, equipment), the current UTC time, and the user's request text. The email address, name, password and the user's existing reservations are not sent.
 - **Price.** Not measured per request. The only price list in the repository is the one in `USAGE.md` (Google Gemini API, paid tier, read on 2026-10-14). One request's token count has not been recorded, so a per-request cost is not claimed here.
 - **When it fails.** A timeout after `AI_TIMEOUT_MS` (15 s), a 429, a 5xx, or an answer that fails the schema shows a sentence and the form still works (`AC-16`, `AC-17`). Tested with a fake client only; the live provider was not called. Each user is limited to 20 requests an hour (`AC-34`).

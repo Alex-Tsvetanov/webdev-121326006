@@ -93,7 +93,7 @@ describe('rule edge cases', () => {
       sessionDays: 14,
       publicBaseUrl: 'http://localhost:3000',
       aiTimeoutMs: 1000,
-      modelName: 'gemini-2.5-flash',
+      modelName: 'gemini-3.6-flash',
     };
     const plain = createServices({ ...base, sessionSecret: 'secret' });
     expect(plain.google).toBeNull();

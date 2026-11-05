@@ -12,7 +12,7 @@ describe('Gemini adapter failures', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const refused = createGeminiClient({
       apiKey: KEY,
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
       fetchImpl: reply(403, { error: { message: 'API key not valid. Please pass a valid API key.' } }),
     });
 

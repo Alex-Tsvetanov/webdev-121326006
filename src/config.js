@@ -9,7 +9,7 @@ export function loadConfig(env = process.env) {
     googleClientId: env.GOOGLE_CLIENT_ID,
     googleClientSecret: env.GOOGLE_CLIENT_SECRET,
     geminiApiKey: env.GEMINI_API_KEY,
-    modelName: env.MODEL_NAME ?? 'gemini-2.5-flash',
+    modelName: env.MODEL_NAME ?? 'gemini-3.6-flash',
     aiTimeoutMs: Number(env.AI_TIMEOUT_MS ?? 15000),
     sessionDays: 14,
   };
