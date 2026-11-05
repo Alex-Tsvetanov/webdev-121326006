@@ -14,7 +14,12 @@ export function createGeminiClient({ apiKey, model, fetchImpl = fetch }) {
           headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
+            // No thinking: the answer is one small JSON object, and thinking made replies slower than the timeout.
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
           }),
           signal: AbortSignal.timeout(timeoutMs),
         });

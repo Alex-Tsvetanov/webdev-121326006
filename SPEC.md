@@ -31,7 +31,15 @@ Lab booking (one of the three predefined topics; name registered in Моят к�
 - Model: Google Gemini `gemini-2.5-flash` (text in, JSON out), called over REST from `src/ai/gemini.js`; the model name is `MODEL_NAME`.
 - Input: the student's short request in plain words (up to 500 characters) plus the current time and the list of labs with their location, capacity, and equipment.
 - Output: one proposed booking: lab, start, end, and a short purpose. It is pre-filled into the booking form; nothing is saved until the user presses Reserve.
-- When it fails: a timeout after 8 seconds, a 429, a 5xx, or a missing key shows a sentence saying the assistant is busy or unavailable, and the manual form keeps working. A reply that does not match the schema, names an unknown lab, or has times in the past is rejected and never shown as a booking.
+- When it fails: a timeout after 15 seconds, a 429, a 5xx, or a missing key shows a sentence saying the assistant is busy or unavailable, and the manual form keeps working. A reply that does not match the schema, names an unknown lab, or has times in the past is rejected and never shown as a booking.
+
+## Data that leaves the application
+<!-- What is sent outside this server, to whom, and what is deliberately not sent. -->
+- **To Google Gemini** (only when a student presses "Suggest with AI"): the lab catalogue (names, locations, capacities, equipment), the current UTC time, and the student's request text (up to 500 characters). The API key travels in a header. Not sent: the student's email address, name, password, session tokens, existing reservations, or any other database row.
+- **To Google, for sign-in with Google only:** the browser goes to Google's sign-in page and comes back with a one-time code. This server exchanges the code with Google and receives the account id, email address, email-verified flag and name. The student's password is never sent to Google.
+- **To the browser:** this server's own pages, scripts and styles, and the student's own JSON data. The page loads nothing from other sites: `public/index.html`, `public/app.js` and `public/styles.css` have no external URLs.
+- **To the MCP client:** whoever runs the MCP server with a student's `MCP_TOKEN` receives that student's reservations and the lab list, and nothing that student could not see in the web app.
+- **To the server log (Render's log):** when a model call fails, the HTTP status and Google's error message only, never the key or the request text (`src/ai/gemini.js`). **Known gap:** the 500 handler in `src/http/app.js` logs the whole error object. A database error can contain a value, for example an email address that broke a unique constraint, so this can reach the log. Fixing it means logging only the error's name and message, not its details.
 
 ## Auth
 <!-- Local sign-in plus at least one provider. Say how an account signing in both ways stays one account. -->
@@ -99,7 +107,7 @@ Where this code does not match the layering: the MCP token check (`requireMcpUse
 - [AC-25] Calling `create_reservation` through MCP books exactly what the HTTP route books, and `cancel_reservation` on another user's booking returns an error result with "You can only change your own reservations."
 - [AC-26] The MCP server with no `MCP_TOKEN`, or an expired one, returns an error result "MCP_TOKEN is missing or expired." and does not start acting as anyone.
 - [AC-27] The Google authorization URL contains the `state` and the exact `redirect_uri`; a failed token or userinfo call shows "Google sign-in failed. Please try again."
-- [AC-28] With no environment variables, the app uses port 3000, Gemini model `gemini-2.5-flash` and an 8-second AI timeout; with `SESSION_SECRET` empty, the services refuse to start.
+- [AC-28] With no environment variables, the app uses port 3000, Gemini model `gemini-2.5-flash` and a 15-second AI timeout; with `SESSION_SECRET` empty, the services refuse to start.
 - [AC-29] The web app refuses to start when `DATABASE_URL` or `SESSION_SECRET` is missing, and names the missing settings in one sentence; with both set it starts.
 - [AC-30] `GET /health` answers 200 `{"status":"ok"}` while the database answers, and 503 with a sentence that names no host or error text when it does not.
 - [AC-31] An unknown page returns a one-line 404; malformed JSON returns 400 with a sentence; an unexpected failure returns 500 with a generic sentence and no stack trace or internal message.

@@ -24,7 +24,7 @@ describe('review finding R6: limits on sign-in, the assistant, and bookings', ()
     await expect(auth.login({ email: 'ben@uni.bg', password: 'long-password' })).resolves.toBeDefined();
     clock = new Date(NOW.getTime() + 15 * MINUTE + 1);
     await expect(auth.login({ email: 'ana@uni.bg', password: 'long-password' })).resolves.toBeDefined();
-  });
+  }, 20000); // bcrypt at cost 12 runs 13 times here, which takes about 5 s, so the default 5 s limit is too tight.
 
   it('AC-34 R6: the 21st assistant request by one user within an hour gets 429 and makes no model call', async () => {
     const repo = createMemoryRepo();

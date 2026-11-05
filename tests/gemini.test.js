@@ -4,7 +4,7 @@ import { createAiService } from '../src/services/ai.js';
 import { AiError } from '../src/errors.js';
 import { createMemoryRepo } from './helpers/memory-repo.js';
 
-const KEY = 'AIza-test-key-that-must-never-be-logged';
+const KEY = 'fake-key-for-tests-that-must-never-be-logged';
 const reply = (status, body) => async () => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 describe('Gemini adapter failures', () => {
@@ -31,6 +31,20 @@ describe('Gemini adapter failures', () => {
     expect(res.status).toBe('unavailable');
     expect(res.message).toMatch(/refused the request/);
     log.mockRestore();
+  });
+
+  it('AC-36: the request turns thinking off, so a one-object answer comes back within the timeout', async () => {
+    let sent;
+    const client = createGeminiClient({
+      apiKey: KEY,
+      model: 'gemini-3.8-flash',
+      fetchImpl: async (url, init) => {
+        sent = JSON.parse(init.body);
+        return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"labId":1}' }] } }] }), { status: 200 });
+      },
+    });
+    await expect(client.generateJson('p', { timeoutMs: 1000 })).resolves.toEqual({ labId: 1 });
+    expect(sent.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
   });
 
   it('AC-36: a 503 from the provider means busy, not refused, and says to try again', async () => {

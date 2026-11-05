@@ -41,6 +41,7 @@ A screen that only handles "it worked" is a screen that lies to the user on the 
 - [x] **The focused element is visible.** A `:focus-visible` outline that is not switched off.
   - how I checked: the focused select had a computed `outline: solid 3px rgb(255, 176, 0)`, from `:focus-visible` in `styles.css`.
 - [x] **Text contrast is at least 4.5:1.** Name the tool you measured with.
+  - tool: no contrast-checker app. I wrote a short JavaScript snippet, run in the built-in browser's page, that reads each element's computed colour and background (`getComputedStyle`) and applies the WCAG 2.x relative-luminance formula: ratio = (L1 + 0.05) / (L2 + 0.05). I did not check with axe, Lighthouse or a colour picker, so an independent tool may give slightly different figures.
   - how I checked: computed colours from the browser, with the WCAG relative-luminance formula run in page script: body text 15.39:1, notice 14.37:1, error notice 6.24:1, primary button 6.09:1, ghost button 6.09:1. Placeholder text was not measured.
 - [x] **Every input has a label** a screen reader reads, not just placeholder text.
   - how I checked: in the page, each of the seven form fields (email, password, description, lab, start, end, purpose) has an associated `<label>`.

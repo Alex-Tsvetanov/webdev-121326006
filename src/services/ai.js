@@ -43,7 +43,7 @@ function buildPrompt(request, labs, current) {
   ].join('\n');
 }
 
-export function createAiService({ client, repo, now = () => new Date(), timeoutMs = 8000 }) {
+export function createAiService({ client, repo, now = () => new Date(), timeoutMs = 15000 }) {
   // Each user gets 20 assistant requests an hour, so one account cannot use up the provider's quota for everyone.
   const perUser = createLimiter({
     max: 20,
