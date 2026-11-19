@@ -12,6 +12,7 @@
     "start": "node src/main.js",
     "migrate": "node src/db/migrate.js",
     "mcp": "node --env-file-if-exists=.env mcp-server/server.js",
+    "ai:probe": "node --env-file-if-exists=.env scripts/ai-probe.mjs",
     "test:unit": "vitest run",
     "coverage": "vitest run --coverage",
     "test": "npm run test:unit && node mcp-server/check.mjs -- npm run --silent mcp"
