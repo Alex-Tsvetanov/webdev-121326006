@@ -35,6 +35,9 @@ function showAuth() {
   $('#app').hidden = true;
   $('#logout').hidden = true;
   $('#link-google').hidden = true;
+  $('#auth-form').hidden = false;
+  $('#register-form').hidden = true;
+  $('#auth-title').textContent = 'Sign in';
 }
 
 function enterApp() {
@@ -127,16 +130,31 @@ function fillForm(suggestion) {
 
 $('#auth-form').addEventListener('submit', (event) => {
   event.preventDefault();
-  submitAuth('/api/auth/login');
+  submitAuth(event.currentTarget, '/api/auth/login');
 });
 
-$('#register').addEventListener('click', () => {
-  const form = $('#auth-form');
-  if (form.reportValidity()) submitAuth('/api/auth/register');
+$('#register-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  submitAuth(event.currentTarget, '/api/auth/register');
 });
 
-async function submitAuth(path) {
-  const form = $('#auth-form');
+// Sign-in and sign-up are separate forms (R11). Switching keeps the typed email and moves focus to the next field.
+function showAuthForm(mode) {
+  const signIn = $('#auth-form');
+  const register = $('#register-form');
+  const [from, to] = mode === 'register' ? [signIn, register] : [register, signIn];
+  to.email.value = from.email.value;
+  from.hidden = true;
+  to.hidden = false;
+  $('#auth-title').textContent = mode === 'register' ? 'Create an account' : 'Sign in';
+  report('');
+  (to.email.value ? to.password : to.email).focus();
+}
+
+$('#show-register').addEventListener('click', () => showAuthForm('register'));
+$('#show-sign-in').addEventListener('click', () => showAuthForm('sign-in'));
+
+async function submitAuth(form, path) {
   try {
     await api(path, { method: 'POST', body: Object.fromEntries(new FormData(form)) });
     form.reset();

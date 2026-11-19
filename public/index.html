@@ -24,16 +24,29 @@
     <section id="auth" aria-labelledby="auth-title" hidden>
       <div class="card">
         <h2 id="auth-title" tabindex="-1">Sign in</h2>
+        <!-- Two forms, so a password manager fills a saved password in one and offers a new one in the other (R11). -->
         <form id="auth-form" class="stack">
           <label>Email
             <input name="email" type="email" autocomplete="email" required>
           </label>
           <label>Password
-            <input name="password" type="password" autocomplete="current-password" minlength="8" required>
+            <input name="password" type="password" autocomplete="current-password" required>
           </label>
           <div class="actions">
             <button type="submit" class="button" id="sign-in">Sign in</button>
-            <button type="button" class="button ghost" id="register">Create account</button>
+            <button type="button" class="button ghost" id="show-register">Create an account</button>
+          </div>
+        </form>
+        <form id="register-form" class="stack" hidden>
+          <label>Email
+            <input name="email" type="email" autocomplete="email" required>
+          </label>
+          <label>New password (at least 8 characters)
+            <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+          </label>
+          <div class="actions">
+            <button type="submit" class="button" id="register">Create account</button>
+            <button type="button" class="button ghost" id="show-sign-in">I already have an account</button>
           </div>
         </form>
         <a class="button ghost google" href="/auth/google">Continue with Google</a>
