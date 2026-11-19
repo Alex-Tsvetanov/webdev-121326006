@@ -24,12 +24,6 @@ function tokenFrom(req) {
   return readCookie(req, 'sid');
 }
 
-function idParam(req) {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) throw new AppError(404, 'Reservation not found.');
-  return id;
-}
-
 export function createApp({ auth, reservations, ai, google, health, config, staticDir }) {
   const app = express();
   app.set('trust proxy', 1);
@@ -115,12 +109,13 @@ export function createApp({ auth, reservations, ai, google, health, config, stat
   });
 
   app.patch('/api/reservations/:id', requireUser, async (req, res) => {
-    const reservation = await reservations.update(req.user, idParam(req), req.body ?? {});
+    // The service checks the id, so the MCP tools get the same answer (R7).
+    const reservation = await reservations.update(req.user, req.params.id, req.body ?? {});
     res.json({ reservation });
   });
 
   app.delete('/api/reservations/:id', requireUser, async (req, res) => {
-    await reservations.cancel(req.user, idParam(req));
+    await reservations.cancel(req.user, req.params.id);
     res.status(204).end();
   });
 

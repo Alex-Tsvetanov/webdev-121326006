@@ -4,6 +4,15 @@ const MAX_DURATION_MS = 8 * 60 * 60 * 1000;
 const MAX_PURPOSE_CHARS = 200;
 // A user may hold this many bookings that have not ended yet, so one account cannot block the labs for everyone.
 const MAX_UPCOMING = 10;
+// Ids are PostgreSQL `int` values. Anything else cannot name a row, and the database would answer it with an error.
+const MAX_ID = 2_147_483_647;
+
+// Checked here, not in the HTTP route, so the MCP tools get the same answer (R7). HTTP passes the id
+// from the path as a string, and MCP passes a number; anything else is not an id.
+function toId(value) {
+  const id = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+  return Number.isInteger(id) && id >= 1 && id <= MAX_ID ? id : null;
+}
 
 function cleanPurpose(purpose) {
   return String(purpose ?? '').trim().slice(0, MAX_PURPOSE_CHARS);
@@ -35,8 +44,9 @@ export function createReservationService({ repo, now = () => new Date() }) {
     if (clash) throw new AppError(409, 'This lab is already reserved for part of that time.');
   }
 
-  async function ownedBy(user, id) {
-    const reservation = await repo.findReservation(id);
+  async function ownedBy(user, rawId) {
+    const id = toId(rawId);
+    const reservation = id && (await repo.findReservation(id));
     if (!reservation) throw new AppError(404, 'Reservation not found.');
     if (reservation.user_id !== user.id) throw new AppError(403, 'You can only change your own reservations.');
     return reservation;
@@ -48,7 +58,8 @@ export function createReservationService({ repo, now = () => new Date() }) {
     listMine: (user) => repo.listReservationsForUser(user.id),
 
     async create(user, { labId, startsAt, endsAt, purpose }) {
-      const lab = await repo.findLab(Number(labId));
+      const id = toId(labId);
+      const lab = id && (await repo.findLab(id));
       if (!lab) throw new AppError(404, 'Lab not found.');
       const { start, end } = parseRange(startsAt, endsAt);
       const upcoming = (await repo.listReservationsForUser(user.id)).filter((r) => new Date(r.ends_at) > now());
