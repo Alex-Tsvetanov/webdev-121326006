@@ -33,18 +33,21 @@ describe('Gemini adapter failures', () => {
     log.mockRestore();
   });
 
-  it('AC-36: the request turns thinking off, so a one-object answer comes back within the timeout', async () => {
+  // `minimal` is the Gemini 3 name for the lowest thinking level; `thinkingBudget: 0` is the Gemini 2.5 one.
+  // Measured on 2026-11-19 against gemini-3.6-flash: both gave 0 thinking tokens and an answer in 1 to 2 s,
+  // while no thinking setting at all was still running after 60 s. So this pins the documented name.
+  it('AC-36: the request asks for the minimal thinking level, so a one-object answer comes back within the timeout', async () => {
     let sent;
     const client = createGeminiClient({
       apiKey: KEY,
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.6-flash',
       fetchImpl: async (url, init) => {
         sent = JSON.parse(init.body);
         return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"labId":1}' }] } }] }), { status: 200 });
       },
     });
     await expect(client.generateJson('p', { timeoutMs: 1000 })).resolves.toEqual({ labId: 1 });
-    expect(sent.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+    expect(sent.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'minimal' });
   });
 
   it('AC-36: a 503 from the provider means busy, not refused, and says to try again', async () => {
@@ -72,6 +75,72 @@ describe('Gemini adapter failures', () => {
     });
     await expect(notJson.generateJson('p', { timeoutMs: 1000 })).rejects.toMatchObject({ code: 'invalid_json' });
     expect(log.mock.calls.flat().join(' ')).not.toContain('Biology');
+    log.mockRestore();
+  });
+});
+
+// Measured on 2026-11-19 with the real key: gemini-3.6-flash answered 503 "high demand" or hung past 60 s
+// in five tries out of five, while gemini-3.1-flash-lite answered in 1 to 2 s every time.
+describe('Gemini fallback model', () => {
+  const FALLBACK = 'gemini-3.1-flash-lite';
+  const ok = (obj) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] } }] }), { status: 200 });
+  const modelOf = (url) => String(url).match(/models\/([^:]+):/)[1];
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  it('AC-42: a busy main model (503 or 429) hands the same request to the fallback model, and its answer is used', async () => {
+    const log = quiet();
+    for (const busy of [503, 429]) {
+      const calls = [];
+      const client = createGeminiClient({
+        apiKey: KEY,
+        model: 'gemini-3.6-flash',
+        fetchImpl: async (url, init) => {
+          calls.push({ model: modelOf(url), body: init.body });
+          return calls.length === 1 ? new Response('{}', { status: busy }) : ok({ labId: 2 });
+        },
+      });
+      await expect(client.generateJson('p', { timeoutMs: 1000 })).resolves.toEqual({ labId: 2 });
+      expect(calls.map((c) => c.model)).toEqual(['gemini-3.6-flash', FALLBACK]);
+      expect(calls[1].body).toBe(calls[0].body);
+    }
+    expect(log.mock.calls.flat().join(' ')).toMatch(/trying gemini-3\.1-flash-lite/);
+    log.mockRestore();
+  });
+
+  it('AC-42: a main model that has not answered in half the timeout leaves the other half to the fallback model', async () => {
+    const log = quiet();
+    const started = Date.now();
+    let mainGaveUpAfter;
+    const client = createGeminiClient({
+      apiKey: KEY,
+      model: 'gemini-3.6-flash',
+      fetchImpl: (url, init) => {
+        if (modelOf(url) !== 'gemini-3.6-flash') return Promise.resolve(ok({ labId: 3 }));
+        return new Promise((resolve, reject) => {
+          init.signal.addEventListener('abort', () => {
+            mainGaveUpAfter = Date.now() - started;
+            reject(init.signal.reason);
+          });
+        });
+      },
+    });
+    await expect(client.generateJson('p', { timeoutMs: 400 })).resolves.toEqual({ labId: 3 });
+    expect(mainGaveUpAfter).toBeGreaterThanOrEqual(180);
+    expect(mainGaveUpAfter).toBeLessThan(380);
+    log.mockRestore();
+  });
+
+  it('AC-42: a refused request (400) is not sent again, and with MODEL_NAME already the fallback there is one try', async () => {
+    const log = quiet();
+    let calls = 0;
+    const refused = createGeminiClient({ apiKey: KEY, model: 'gemini-3.6-flash', fetchImpl: async () => { calls += 1; return new Response('{}', { status: 400 }); } });
+    await expect(refused.generateJson('p', { timeoutMs: 1000 })).rejects.toMatchObject({ code: 'provider_error' });
+    expect(calls).toBe(1);
+
+    calls = 0;
+    const alone = createGeminiClient({ apiKey: KEY, model: FALLBACK, fetchImpl: async () => { calls += 1; return new Response('{}', { status: 503 }); } });
+    await expect(alone.generateJson('p', { timeoutMs: 1000 })).rejects.toMatchObject({ code: 'rate_limited' });
+    expect(calls).toBe(1);
     log.mockRestore();
   });
 });
