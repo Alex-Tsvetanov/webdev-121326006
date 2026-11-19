@@ -173,6 +173,13 @@ $('#logout').addEventListener('click', async () => {
   $('#auth-title').focus();
 });
 
+// A date field accepts years such as 62026, which Date cannot read; say so in a sentence, not "Invalid time value".
+function toIso(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error('Start and end must be valid dates and times.');
+  return date.toISOString();
+}
+
 $('#booking-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -182,8 +189,8 @@ $('#booking-form').addEventListener('submit', async (event) => {
       method: 'POST',
       body: {
         labId: Number(data.get('labId')),
-        startsAt: new Date(data.get('startsAt')).toISOString(),
-        endsAt: new Date(data.get('endsAt')).toISOString(),
+        startsAt: toIso(data.get('startsAt')),
+        endsAt: toIso(data.get('endsAt')),
         purpose: data.get('purpose'),
       },
     });
