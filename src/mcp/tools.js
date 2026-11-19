@@ -80,11 +80,14 @@ export const TOOL_SPECS = [
     description: 'Turn a short natural-language request into a proposed reservation. Nothing is booked; call create_reservation to confirm.',
     inputSchema: {
       type: 'object',
-      properties: { text: { type: 'string', description: 'The request in plain words, up to 500 characters' } },
+      properties: {
+        text: { type: 'string', description: 'The request in plain words, up to 500 characters' },
+        timeZone: { type: 'string', description: 'The user\'s time zone, such as Europe/Sofia; times in the request are read on that clock. Default UTC' },
+      },
       required: ['text'],
     },
-    schema: z.object({ text: z.string().min(1).max(500) }),
-    run: (s, user, { text }) => s.ai.suggestReservation(user, text),
+    schema: z.object({ text: z.string().min(1).max(500), timeZone: z.string().max(64).optional() }),
+    run: (s, user, { text, timeZone }) => s.ai.suggestReservation(user, text, { timeZone }),
   },
 ];
 

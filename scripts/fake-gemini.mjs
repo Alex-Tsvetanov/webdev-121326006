@@ -8,8 +8,9 @@ globalThis.fetch = async (url, init) => {
   if (/busy/i.test(prompt.split('<request>').pop())) {
     return Response.json({ error: { message: 'Resource exhausted (fake)' } }, { status: 429 });
   }
-  const start = new Date(Date.now() + 24 * 3600e3); start.setUTCHours(8, 0, 0, 0);
-  const end = new Date(start.getTime() + 2 * 3600e3);
-  const answer = { labId: 2, startsAt: start.toISOString(), endsAt: end.toISOString(), purpose: 'Solder a sensor board' };
+  // Like the real model: tomorrow, 10:00 to 12:00 on the local clock the prompt shows, with no time zone.
+  const [, y, m, d] = prompt.match(/Current local date and time: (\d{4})-(\d{2})-(\d{2})/);
+  const tomorrow = new Date(Date.UTC(+y, m - 1, +d + 1)).toISOString().slice(0, 10);
+  const answer = { labId: 2, startsAt: `${tomorrow}T10:00`, endsAt: `${tomorrow}T12:00`, purpose: 'Solder a sensor board' };
   return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] });
 };

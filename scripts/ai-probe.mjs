@@ -1,6 +1,6 @@
 // Calls the real model once, through the same adapter and service the app uses, and prints what happened.
 // Run: npm run ai:probe   (GEMINI_API_KEY, MODEL_NAME and AI_TIMEOUT_MS come from the environment or .env)
-// What is sent: the seed lab catalogue, the current time, and the fixed request below. No user data.
+// What is sent: the seed lab catalogue, the local date and time of this machine's zone, and the fixed request below.
 // What is printed: each model tried, its HTTP status, time and token counts, the total time, and the app's answer.
 // The key is never printed.
 import { loadConfig } from '../src/config.js';
@@ -42,10 +42,13 @@ const client = createGeminiClient({ apiKey: config.geminiApiKey, model: config.m
 const ai = createAiService({ client, repo: { listLabs: async () => LABS }, timeoutMs: config.aiTimeoutMs });
 
 const started = Date.now();
-const result = await ai.suggestReservation({ id: 0 }, REQUEST);
+// The zone of this machine, as the browser would send it.
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const result = await ai.suggestReservation({ id: 0 }, REQUEST, { timeZone });
 console.log(JSON.stringify({
   model: config.modelName,
   timeoutMs: config.aiTimeoutMs,
+  timeZone,
   elapsedMs: Date.now() - started,
   attempts,
   result,

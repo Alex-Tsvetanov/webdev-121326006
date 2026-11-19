@@ -212,7 +212,8 @@ $('#ai-form').addEventListener('submit', async (event) => {
   try {
     const result = await api('/api/ai/suggest-reservation', {
       method: 'POST',
-      body: { text: new FormData(event.currentTarget).get('text') },
+      // The zone goes to this server only; the model sees the local date and time, not the zone's name.
+      body: { text: new FormData(event.currentTarget).get('text'), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     });
     if (result.status !== 'ok') {
       box.classList.add('error');
