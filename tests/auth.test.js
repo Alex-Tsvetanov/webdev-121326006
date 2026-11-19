@@ -38,10 +38,11 @@ describe('authentication', () => {
     expect(unknown).toMatchObject({ status: 401, message: 'Invalid email or password.' });
   });
 
-  it('AC-4: a verified Google email links to the existing local account', async () => {
+  it('AC-4: signed in to the local account, a verified Google email links to it', async () => {
     const { repo, auth } = setup();
     const local = await auth.register({ email: 'ana@uni.bg', password: 'long-password' });
-    const google = await auth.signInWithGoogle({ sub: 'g-1', email: 'ana@uni.bg', email_verified: true });
+    // Signed out, the same sign-in is refused (R5, AC-37 in tests/r5-google-link.test.js).
+    const google = await auth.signInWithGoogle({ sub: 'g-1', email: 'ana@uni.bg', email_verified: true }, { currentUser: local.user });
     expect(google.user.id).toBe(local.user.id);
     expect(repo.users).toHaveLength(1);
     expect(repo.identities).toEqual([{ user_id: local.user.id, provider: 'google', provider_user_id: 'g-1' }]);
