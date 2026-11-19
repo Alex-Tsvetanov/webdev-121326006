@@ -5,6 +5,9 @@ import { createLimiter } from './limits.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BCRYPT_ROUNDS = 12;
+// A hash of a random string nobody kept, at the same cost as real hashes. A login for an unknown email,
+// or for a Google-only account, compares against it, so it takes as long as a wrong password (R9).
+const DUMMY_HASH = '$2a$12$2JA0lOMHRGEiDJ8LmEsX8O/ZtOSKA65KpDuBDmsl7DJ/mRCturbL2';
 
 // Only a keyed hash is stored, so a leaked sessions table cannot be replayed as cookies,
 // and the key lives in SESSION_SECRET, not in the database.
@@ -56,7 +59,8 @@ export function createAuthService({ repo, now = () => new Date(), sessionDays = 
     async login({ email, password }) {
       loginAttempts.take(normalizeEmail(email));
       const user = await repo.findUserByEmail(normalizeEmail(email));
-      const ok = Boolean(user?.password_hash) && (await bcrypt.compare(String(password ?? ''), user.password_hash));
+      const matches = await bcrypt.compare(String(password ?? ''), user?.password_hash ?? DUMMY_HASH);
+      const ok = Boolean(user?.password_hash) && matches;
       // Same message for unknown email and wrong password, so the form cannot be used to find accounts.
       if (!ok) throw new AppError(401, 'Invalid email or password.');
       return { user: publicUser(user), token: await issueSession(user.id) };
