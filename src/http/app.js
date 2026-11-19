@@ -94,7 +94,9 @@ export function createApp({ auth, reservations, ai, google, health, config, stat
       throw new AppError(400, 'Sign-in expired. Please try again.');
     }
     const profile = await google.fetchProfile(String(req.query.code ?? ''));
-    const { token } = await auth.signInWithGoogle(profile);
+    // A browser that is already signed in may link Google to that account (AC-4); a signed-out one may not (R5).
+    const currentUser = await auth.userForToken(tokenFrom(req));
+    const { token } = await auth.signInWithGoogle(profile, { currentUser });
     res.clearCookie('oauth_state', cookieBase).cookie('sid', token, sessionCookie).redirect('/');
   });
 

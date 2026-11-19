@@ -34,12 +34,14 @@ function showAuth() {
   $('#auth').hidden = false;
   $('#app').hidden = true;
   $('#logout').hidden = true;
+  $('#link-google').hidden = true;
 }
 
 function enterApp() {
   $('#auth').hidden = true;
   $('#app').hidden = false;
   $('#logout').hidden = false;
+  $('#link-google').hidden = false;
   loadLabs();
   loadMine();
 }

@@ -62,8 +62,9 @@ export function createAuthService({ repo, now = () => new Date(), sessionDays = 
       return { user: publicUser(user), token: await issueSession(user.id) };
     },
 
-    // profile comes from Google's userinfo endpoint: { sub, email, email_verified, name }
-    async signInWithGoogle(profile) {
+    // profile comes from Google's userinfo endpoint: { sub, email, email_verified, name }.
+    // currentUser is whoever this browser is already signed in as, or null.
+    async signInWithGoogle(profile, { currentUser = null } = {}) {
       if (!profile?.sub) throw new AppError(400, 'Google did not return an account id.');
       const linked = await repo.findIdentity('google', profile.sub);
       let user;
@@ -71,9 +72,17 @@ export function createAuthService({ repo, now = () => new Date(), sessionDays = 
         user = await repo.findUserById(linked.user_id);
       } else {
         const email = normalizeEmail(profile.email);
+        if (currentUser && currentUser.email !== email) {
+          throw new AppError(409, 'This Google account uses a different email from the account you are signed in to. Sign out first to use it.');
+        }
         const existing = await repo.findUserByEmail(email);
         if (existing && profile.email_verified !== true) {
           throw new AppError(403, 'This Google account has an unverified email, so it cannot be linked to an existing account.');
+        }
+        // A local account never proved it owns its email, so a matching email alone is not enough to link (R5).
+        // The person must also be signed in to that account, which proves they know its password.
+        if (existing && currentUser?.id !== existing.id) {
+          throw new AppError(409, 'An account with this email already exists. Sign in with its password, then choose "Link Google account".');
         }
         user = existing ?? (await repo.createUser({ email, passwordHash: null, name: profile.name }));
         await repo.insertIdentity({ userId: user.id, provider: 'google', providerUserId: profile.sub });
