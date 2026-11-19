@@ -29,13 +29,13 @@ Lab booking (one of the three predefined topics; name registered in Моят к�
 ## The model feature
 <!-- Which model, which modality, and what it does for a user. -->
 - Model: Google Gemini `gemini-3.6-flash` (text in, JSON out), called over REST from `src/ai/gemini.js` with the `minimal` thinking level; the model name is `MODEL_NAME`. When it is busy (429, 503), unreachable, or has not answered in half the timeout, the same request goes once to `gemini-3.1-flash-lite` within the rest of the 15 seconds.
-- Input: the student's short request in plain words (up to 500 characters) plus the current time and the list of labs with their location, capacity, and equipment.
+- Input: the student's short request in plain words (up to 500 characters) plus the current date and time on the student's own clock (their browser's time zone) and the list of labs with their location, capacity, and equipment.
 - Output: one proposed booking: lab, start, end, and a short purpose. It is pre-filled into the booking form; nothing is saved until the user presses Reserve.
 - When it fails: a timeout after 15 seconds, a 429, a 5xx, or a missing key shows a sentence saying the assistant is busy or unavailable, and the manual form keeps working. A reply that does not match the schema, names an unknown lab, or has times in the past is rejected and never shown as a booking.
 
 ## Data that leaves the application
 <!-- What is sent outside this server, to whom, and what is deliberately not sent. -->
-- **To Google Gemini** (only when a student presses "Suggest with AI"): the lab catalogue (names, locations, capacities, equipment), the current UTC time, and the student's request text (up to 500 characters). The API key travels in a header. Not sent: the student's email address, name, password, session tokens, existing reservations, or any other database row.
+- **To Google Gemini** (only when a student presses "Suggest with AI"): the lab catalogue (names, locations, capacities, equipment), the current date, time and weekday on the student's own clock, and the student's request text (up to 500 characters). The browser sends its time zone's name (for example `Europe/Sofia`) to this server, which converts the model's local times with it; the name itself is not sent to Gemini, though the local time shows the offset from UTC. The API key travels in a header. Not sent: the student's email address, name, password, session tokens, existing reservations, or any other database row.
 - **To Google, for sign-in with Google only:** the browser goes to Google's sign-in page and comes back with a one-time code. This server exchanges the code with Google and receives the account id, email address, email-verified flag and name. The student's password is never sent to Google.
 - **To the browser:** this server's own pages, scripts and styles, and the student's own JSON data. The page loads nothing from other sites: `public/index.html`, `public/app.js` and `public/styles.css` have no external URLs.
 - **To the MCP client:** whoever runs the MCP server with a student's `MCP_TOKEN` receives that student's reservations and the lab list, and nothing that student could not see in the web app.
@@ -122,6 +122,7 @@ Where this code does not match the layering: the MCP token check (`requireMcpUse
 - [AC-40] User text containing `</request>` or `<request>` reaches the model as text inside the one `<request>` block: `<`, `>` and `&` are sent as entities.
 - [AC-41] The sign-up form's password field has `autocomplete="new-password"` and needs 8 characters; the sign-in form's has `autocomplete="current-password"`.
 - [AC-42] When the main model answers 429 or 503, cannot be reached, or has not answered in half of `AI_TIMEOUT_MS`, the same request goes once to `gemini-3.1-flash-lite` in the time that is left, and its answer is used; a refused request (400, 403) is not sent again, and with `MODEL_NAME` already `gemini-3.1-flash-lite` there is one try.
+- [AC-43] A request from a browser in a time zone other than UTC is read on that clock: the model is shown the local date, time and weekday (never the zone's name), and its "10:00 to 12:00" is booked as 10:00 to 12:00 in that zone, daylight saving included. The web route and the MCP tool both pass the zone on; no zone, or an unknown one, means UTC.
 
 ### Slice 1: sign-in and labs list
 Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the labs list, and signs out.
@@ -172,6 +173,7 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 | AC-40 | `tests/r10-prompt-escape.test.js` |
 | AC-41 | `tests/r11-signup-autocomplete.test.js` |
 | AC-42 | `tests/gemini.test.js` |
+| AC-43 | `tests/ai-timezone.test.js` |
 
 ## Spec vs result
 - The first version of the MCP server used an SDK. The course rule for Exercise 1 is a hand-written protocol loop, so the project tools were ported into `mcp-server/server.js`, which keeps its own loop; the SDK dependency was dropped. The tool logic stayed in `src/mcp/tools.js`.
@@ -185,4 +187,5 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 - Exercise 5, also closed on 2026-11-19: the id check moved from the HTTP route into the service, so MCP gets it too (R7, AC-38); sign-in runs bcrypt for unknown emails (R9, AC-39); the user's text is escaped inside the prompt (R10, AC-40); sign-in and sign-up are separate forms with the right `autocomplete` (R11, AC-41).
 - 2026-11-19, the model call: the assistant timed out on the live site. Measured with the real key: the thinking setting was not the cause. `thinkingBudget: 0` and `thinkingLevel: "minimal"` both gave 0 thinking tokens and an answer in 1 to 2 s when the model answered at all. The cause was Google's capacity: in five rounds `gemini-3.6-flash` answered 503 "high demand" or hung past 60 s every time, `gemini-3.5-flash` answered 503 every time, and `gemini-3.1-flash-lite` answered in 1 to 2 s every time. So the adapter now falls back to `gemini-3.1-flash-lite` within the same 15 s (AC-42). The request also says `thinkingLevel: "minimal"`, the Gemini 3 name; the AC-36 test that pinned `thinkingBudget: 0` was changed to pin it.
 - 2026-11-19, found by the keyboard check: a five-digit year typed into a date field showed the browser's "Invalid time value"; the form now says "Start and end must be valid dates and times."
+- 2026-11-19, seen on the live site: the prompt gave the current time in UTC, so "10:00 to 12:00" from a browser in Bulgaria came back as 12:00 to 14:00. The browser now sends its time zone; the model is shown the local time and answers in local time, which the server converts (AC-43). Checked against the real model from Sofia: "tomorrow from 10:00 to 12:00" came back as 08:00 to 10:00 UTC, which is 10:00 to 12:00 there.
 - Exercise 5, R6: limits added (AC-33 to AC-35). The numbers are the ones chosen in this project: 10 sign-in attempts per email per 15 minutes, 20 assistant requests per user per hour, 10 upcoming bookings per user. The limits are held in memory, so they start again after a restart. They are not a replacement for a shared store if the app ever runs on several instances.
