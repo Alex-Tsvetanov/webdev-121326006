@@ -13,6 +13,8 @@ See `SPEC.md` for goals, non-goals and acceptance criteria.
 - Test: `npm test` (unit tests, then the Exercise 1 MCP check)
 - Coverage: `npm run coverage` (service layer 100%, overall 80%)
 - MCP server: `npm run mcp` (needs `MCP_TOKEN`, a session token from `POST /api/auth/token`)
+- One real model call: `npm run ai:probe` (uses `GEMINI_API_KEY` from the environment or `.env`; ask before running it)
+- UI check and screenshots: `node scripts/ui-check.mjs docs/ui`, against a local app started with `--import ./scripts/fake-gemini.mjs` (see the top of the script)
 
 ## Conventions
 - ESM modules (`"type": "module"`), two-space indent, single quotes.

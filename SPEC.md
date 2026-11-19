@@ -28,7 +28,7 @@ Lab booking (one of the three predefined topics; name registered in Моят к�
 
 ## The model feature
 <!-- Which model, which modality, and what it does for a user. -->
-- Model: Google Gemini `gemini-3.6-flash` (text in, JSON out), called over REST from `src/ai/gemini.js`; the model name is `MODEL_NAME`.
+- Model: Google Gemini `gemini-3.6-flash` (text in, JSON out), called over REST from `src/ai/gemini.js` with the `minimal` thinking level; the model name is `MODEL_NAME`. When it is busy (429, 503), unreachable, or has not answered in half the timeout, the same request goes once to `gemini-3.1-flash-lite` within the rest of the 15 seconds.
 - Input: the student's short request in plain words (up to 500 characters) plus the current time and the list of labs with their location, capacity, and equipment.
 - Output: one proposed booking: lab, start, end, and a short purpose. It is pre-filled into the booking form; nothing is saved until the user presses Reserve.
 - When it fails: a timeout after 15 seconds, a 429, a 5xx, or a missing key shows a sentence saying the assistant is busy or unavailable, and the manual form keeps working. A reply that does not match the schema, names an unknown lab, or has times in the past is rejected and never shown as a booking.
@@ -45,7 +45,7 @@ Lab booking (one of the three predefined topics; name registered in Моят к�
 <!-- Local sign-in plus at least one provider. Say how an account signing in both ways stays one account. -->
 - Local: email and password (at least 8 characters); the password is stored as a bcrypt hash.
 - Provider: Google, OpenID Connect authorization-code flow, with the `state` value checked against a short-lived cookie.
-- Linking: a Google identity links to an existing account only when Google reports the email as verified; otherwise sign-in is refused with a readable message. Each Google identity maps to one user, and both sign-in methods create the same kind of session (14 days, stored as a keyed hash).
+- Linking: a new Google identity links to an existing account only when Google reports the email as verified **and** the browser is already signed in to that account (the "Link Google account" button on the main screen). A password account never proves it owns its email, so a matching email alone is not enough (review finding R5). Otherwise sign-in is refused with a readable message. Each Google identity maps to one user, and both sign-in methods create the same kind of session (14 days, stored as a keyed hash).
 
 ## MCP tools
 <!-- At least three tools your own MCP server exposes over this project's data.
@@ -116,6 +116,12 @@ Where this code does not match the layering: the MCP token check (`requireMcpUse
 - [AC-34] A user's 21st assistant request in one hour gets 429 and no model call is made; another user keeps their own allowance.
 - [AC-35] A user who has 10 bookings that have not ended cannot book an eleventh (409 with a sentence); a finished booking does not count.
 - [AC-36] When the model provider refuses a request, the server log names the HTTP status and the provider's message, never the API key or the user's text, and the box shows a sentence that says which kind of failure it was (refused, no text, not JSON).
+- [AC-37] A Google sign-in from a signed-out browser whose verified email belongs to a password account is refused with 409 "An account with this email already exists. Sign in with its password, then choose “Link Google account”."; a Google account whose email differs from the signed-in account is refused too; `identities` gains no row in either case.
+- [AC-38] A reservation or lab id that is not a whole number from 1 to 2 147 483 647, through HTTP or MCP, gets 404 "Reservation not found." or "Lab not found." from the service; the database never sees it.
+- [AC-39] A sign-in with an unknown email, or for a Google-only account, runs one bcrypt comparison, like a wrong password, and gets the same "Invalid email or password."
+- [AC-40] User text containing `</request>` or `<request>` reaches the model as text inside the one `<request>` block: `<`, `>` and `&` are sent as entities.
+- [AC-41] The sign-up form's password field has `autocomplete="new-password"` and needs 8 characters; the sign-in form's has `autocomplete="current-password"`.
+- [AC-42] When the main model answers 429 or 503, cannot be reached, or has not answered in half of `AI_TIMEOUT_MS`, the same request goes once to `gemini-3.1-flash-lite` in the time that is left, and its answer is used; a refused request (400, 403) is not sent again, and with `MODEL_NAME` already `gemini-3.1-flash-lite` there is one try.
 
 ### Slice 1: sign-in and labs list
 Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the labs list, and signs out.
@@ -127,7 +133,7 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 | AC-1 | `tests/auth.test.js`, `tests/rule-edges.test.js` |
 | AC-2 | `tests/auth.test.js` |
 | AC-3 | `tests/auth.test.js`, `tests/rule-edges.test.js` |
-| AC-4 | `tests/auth.test.js` |
+| AC-4 | `tests/auth.test.js`, `tests/r5-google-link.test.js` |
 | AC-5 | `tests/auth.test.js` |
 | AC-6 | `tests/auth.test.js`, `tests/rule-edges.test.js` |
 | AC-7 | `tests/auth.test.js` |
@@ -160,6 +166,12 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 | AC-34 | `tests/r6-limits.test.js` |
 | AC-35 | `tests/r6-limits.test.js` |
 | AC-36 | `tests/gemini.test.js` |
+| AC-37 | `tests/r5-google-link.test.js` |
+| AC-38 | `tests/r7-id-in-service.test.js` |
+| AC-39 | `tests/r9-login-timing.test.js` |
+| AC-40 | `tests/r10-prompt-escape.test.js` |
+| AC-41 | `tests/r11-signup-autocomplete.test.js` |
+| AC-42 | `tests/gemini.test.js` |
 
 ## Spec vs result
 - The first version of the MCP server used an SDK. The course rule for Exercise 1 is a hand-written protocol loop, so the project tools were ported into `mcp-server/server.js`, which keeps its own loop; the SDK dependency was dropped. The tool logic stayed in `src/mcp/tools.js`.
@@ -169,5 +181,8 @@ Done when AC-1 to AC-8 and AC-20 pass: a visitor registers, signs in, sees the l
 - Exercise 4, found by running the app against a real Postgres: stopping the database killed the whole process. The pool emitted an unhandled `error` event on a dropped connection. `createPool` now logs it (AC-32), so `/health` can answer 503 and recover to 200 when the database returns. Checked by hand: 200, then 503 with the process still running, then 200 after a restart of Postgres.
 - Exercise 4: `AI_TIMEOUT_MS` was read by the code but missing from `.env.example`; added.
 - Exercise 5, review of this project (`REVIEW.md`): a race let two users book the same slot. Reproduced on Postgres (6 of 10 slots double-booked). Fixed in migration 004 with a database constraint, not only a check in the service (R1). Also fixed: an ongoing booking could not be extended (R2), a `null` line crashed the MCP server (R3), a malformed cookie returned 500 (R4), and missing browser protections (R8).
-- Exercise 5, open: linking a Google sign-in to an existing password account does not require that the password account ever proved its email (R5, AC-4). It needs an email-verification step before it can be fixed without breaking AC-4; see `REVIEW.md`.
+- Exercise 5, R5, closed on 2026-11-19: linking a Google sign-in to an existing password account did not require that the password account ever proved its email. Email verification is out of scope (no email, see the non-goals), so linking now also needs the browser to be signed in to that account, which is what AC-4 already said ("a signed-in user"). The AC-4 test was changed to sign in first, and the old signed-out case is now a refusal (AC-37). Cost: someone who registers another person's address first still blocks that person from it.
+- Exercise 5, also closed on 2026-11-19: the id check moved from the HTTP route into the service, so MCP gets it too (R7, AC-38); sign-in runs bcrypt for unknown emails (R9, AC-39); the user's text is escaped inside the prompt (R10, AC-40); sign-in and sign-up are separate forms with the right `autocomplete` (R11, AC-41).
+- 2026-11-19, the model call: the assistant timed out on the live site. Measured with the real key: the thinking setting was not the cause. `thinkingBudget: 0` and `thinkingLevel: "minimal"` both gave 0 thinking tokens and an answer in 1 to 2 s when the model answered at all. The cause was Google's capacity: in five rounds `gemini-3.6-flash` answered 503 "high demand" or hung past 60 s every time, `gemini-3.5-flash` answered 503 every time, and `gemini-3.1-flash-lite` answered in 1 to 2 s every time. So the adapter now falls back to `gemini-3.1-flash-lite` within the same 15 s (AC-42). The request also says `thinkingLevel: "minimal"`, the Gemini 3 name; the AC-36 test that pinned `thinkingBudget: 0` was changed to pin it.
+- 2026-11-19, found by the keyboard check: a five-digit year typed into a date field showed the browser's "Invalid time value"; the form now says "Start and end must be valid dates and times."
 - Exercise 5, R6: limits added (AC-33 to AC-35). The numbers are the ones chosen in this project: 10 sign-in attempts per email per 15 minutes, 20 assistant requests per user per hour, 10 upcoming bookings per user. The limits are held in memory, so they start again after a restart. They are not a replacement for a shared store if the app ever runs on several instances.
